@@ -1,9 +1,9 @@
 pragma solidity ^0.4.18;
 
 /**
- * Copyright 2018, Flowchain Foundation
+ * Copyright 2018, Flowchain.co
  *
- * The FlowchainCoin (the FLC token) smart contract.
+ * The Flowchain tokens smart contract
  */
  
 contract Mintable {
