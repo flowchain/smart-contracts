@@ -1,9 +1,12 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.4.24;
  
 /**
- * Copyright 2018, Flowchain.co
+ * Copyright 2018, The Flowchain Foundation Limited
  *
- * The FlowchainCoin (FLC) smart contract of private sale Round A
+ * The FlowchainCoin (FLC) Token Sale Contract
+ * 
+ *  - Private Sale A
+ *  - Monthly Vest
  */
 
 /**
@@ -124,20 +127,34 @@ library SafeMath {
 }
 
 interface Token {
+    /// @dev Mint an amount of tokens and transfer to the backer
+    /// @param to The address of the backer who will receive the tokens
+    /// @param amount The amount of rewarded tokens
+    /// @return The result of token transfer
     function mintToken(address to, uint amount) external returns (bool success);  
-    function setupMintableAddress(address _mintable) public returns (bool success);
+
+    /// @param _owner The address from which the balance will be retrieved
+    /// @return The balance
+    function balanceOf(address _owner) public view returns (uint256 balance);
+
+    /// @notice send `_value` token to `_to` from `msg.sender`
+    /// @param _to The address of the recipient
+    /// @param _value The amount of token to be transferred
+    /// @return Whether the transfer was successful or not
+    function transfer(address _to, uint256 _value) public returns (bool success);    
 }
 
 contract MintableSale {
     // @notice Create a new mintable sale
+    /// @param vestingAddress The vesting app    
     /// @param rate The exchange rate
     /// @param fundingGoalInEthers The funding goal in ethers
     /// @param durationInMinutes The duration of the sale in minutes
     /// @return 
-    function createMintableSale(uint256 rate, uint256 fundingGoalInEthers, uint durationInMinutes) external returns (bool success);
+    function createMintableSale(address vestingAddress, uint256 rate, uint256 fundingGoalInEthers, uint durationInMinutes) public returns (bool success);
 }
 
-contract EarlyTokenSale is MintableSale {
+contract VestingTokenSale is MintableSale {
     using SafeMath for uint256;
     uint256 public fundingGoal;
     uint256 public tokensPerEther;
@@ -157,29 +174,38 @@ contract EarlyTokenSale is MintableSale {
 
     event FundTransfer(address backer, uint amount);
 
+    address public addressOfVestingApp;
+    uint256 constant public   VESTING_DURATION    =  31536000; // 1 Year in second
+    uint256 constant public   CLIFF_DURATION      =   2592000; // 1 months (30 days) in second
+
     /* Constrctor function */
-    function EarlyTokenSale(
+    function VestingTokenSale(
         address _addressOfTokenUsedAsReward
     ) payable {
         creator = msg.sender;
         multiSigWallet = 0x9581973c54fce63d0f5c4c706020028af20ff723;
+
         // Token Contract
         addressOfTokenUsedAsReward = _addressOfTokenUsedAsReward;
         tokenReward = Token(addressOfTokenUsedAsReward);
+
         // Setup accredited investors
         setupAccreditedAddress(0xec7210E3db72651Ca21DA35309A20561a6F374dd, 1000);
     }
 
     // @dev Start a new mintable sale.
+    // @param vestingAddress The vesting app
     // @param rate The exchange rate in ether, for example 1 ETH = 6400 FLC
     // @param fundingGoalInEthers
     // @param durationInMinutes
-    function createMintableSale(uint256 rate, uint256 fundingGoalInEthers, uint durationInMinutes) external returns (bool success) {
+    function createMintableSale(address vestingAddrss, uint256 rate, uint256 fundingGoalInEthers, uint durationInMinutes) public returns (bool success) {
         require(msg.sender == creator);
         require(isFunding == false);
         require(rate <= 6400 && rate >= 1);                   // rate must be between 1 and 6400
-        require(fundingGoalInEthers >= 1000);        
+        require(fundingGoalInEthers >= 1);        
         require(durationInMinutes >= 60 minutes);
+
+        addressOfVestingApp = vestingAddrss;
 
         deadline = now + durationInMinutes * 1 minutes;
         fundingGoal = amountRaised + fundingGoalInEthers * 1 ether;
@@ -246,7 +272,10 @@ contract EarlyTokenSale is MintableSale {
         amountRaised += amount;
         FundTransfer(msg.sender, amount);
 
-        uint256 value = amount.mul(tokensPerEther);        
-        tokenReward.mintToken(msg.sender, value);        
-    }
+        // total releasable tokens
+        uint256 value = amount.mul(tokensPerEther);
+
+        // Mint tokens and keep it in the contract
+        tokenReward.mintToken(addressOfVestingApp, value);
+    }   
 }
