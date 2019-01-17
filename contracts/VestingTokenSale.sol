@@ -67,6 +67,7 @@ contract VestingTokenSale is MintableSale {
     uint256 public fundingGoal;
     uint256 public tokensPerEther;
     uint public deadline;
+    uint public tick;
     address public multiSigWallet;
     uint256 public amountRaised;
     Token public tokenReward;
@@ -99,6 +100,9 @@ contract VestingTokenSale is MintableSale {
 
         // Setup accredited investors
         setupAccreditedAddress(0xec7210E3db72651Ca21DA35309A20561a6F374dd, 1000);
+
+        // Initialize the ticker
+        tick = now;
     }
 
     // @dev Start a new mintable sale.
@@ -115,15 +119,20 @@ contract VestingTokenSale is MintableSale {
 
         addressOfVestingApp = vestingAddrss;
 
-        deadline = now + durationInMinutes * 1 minutes;
+        // increase the tick
+        if (now > tick) {
+            tick = now;
+        }
+
+        deadline = tick + durationInMinutes * 1 minutes;
         fundingGoal = amountRaised + fundingGoalInEthers * 1 ether;
         tokensPerEther = rate;
         isFunding = true;
         return true;    
     }
 
-    modifier afterDeadline() { if (now > deadline) _; }
-    modifier beforeDeadline() { if (now <= deadline) _; }
+    modifier afterDeadline() { if (now > tick && now > deadline) _; }
+    modifier beforeDeadline() { if (now > tick && now <= deadline) _; }
 
     /// @param _accredited The address of the accredited investor
     /// @param _amountInEthers The amount of remaining ethers allowed to invested
