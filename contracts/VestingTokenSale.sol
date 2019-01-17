@@ -264,7 +264,7 @@ contract VestingTokenSale is MintableSale {
         uint256 amount = msg.value;        
         require(amount >= 1 ether);
 
-        require(accredited[msg.sender] - amount >= 0); 
+        require(accredited[msg.sender] >= amount);
 
         multiSigWallet.transfer(amount);      
         balanceOf[msg.sender] += amount;
